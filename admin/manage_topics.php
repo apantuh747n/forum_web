@@ -1,5 +1,6 @@
 <?php
-require_once '../includes/header.php';
+require_once __DIR__ . '/../config/database.php';
+
 
 if (!isAdmin()) {
     redirect('../index.php');
@@ -31,7 +32,7 @@ $stmt = $pdo->query("
 ");
 $topics = $stmt->fetchAll();
 ?>
-
+<link rel="stylesheet" href="/css/style.css">
 <h1>Manage Topics</h1>
 
 <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
@@ -78,4 +79,3 @@ $topics = $stmt->fetchAll();
 
 <a href="index.php" class="btn" style="margin-top: 20px;">Kembali ke Admin Panel</a>
 
-<?php require_once '../includes/footer.php'; ?>

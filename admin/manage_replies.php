@@ -1,5 +1,6 @@
 <?php
-require_once '../includes/header.php';
+require_once __DIR__ . '/../config/database.php';
+
 
 if (!isAdmin()) {
     redirect('../index.php');
@@ -74,7 +75,7 @@ if (isset($_GET['edit'])) {
     $editReply = $stmt->fetch();
 }
 ?>
-
+<link rel="stylesheet" href="/css/style.css">
 <h1>Manage Komentar</h1>
 
 <?php if ($error): ?>
@@ -234,4 +235,3 @@ tbody tr:hover {
     <a href="../index.php" class="btn" target="_blank">Lihat Forum</a>
 </div>
 
-<?php require_once '../includes/footer.php'; ?>

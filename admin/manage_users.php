@@ -1,5 +1,6 @@
 <?php
-require_once '../includes/header.php';
+require_once __DIR__ . '/../config/database.php';
+
 
 if (!isAdmin()) {
     redirect('../index.php');
@@ -34,6 +35,7 @@ if (isset($_GET['toggle_role'])) {
 $stmt = $pdo->query("SELECT * FROM users ORDER BY created_at DESC");
 $users = $stmt->fetchAll();
 ?>
+<link rel="stylesheet" href="/css/style.css">
 
 <h1>Manage Users</h1>
 
@@ -70,5 +72,3 @@ $users = $stmt->fetchAll();
 </table>
 
 <a href="index.php" class="btn" style="margin-top: 20px;">Kembali ke Admin Panel</a>
-
-<?php require_once '../includes/footer.php'; ?>

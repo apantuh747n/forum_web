@@ -1,5 +1,5 @@
 <?php
-require_once '../includes/header.php';
+require_once __DIR__ . '/../config/database.php';
 
 
 if (!isAdmin()) {
@@ -13,10 +13,12 @@ $totalReplies = $pdo->query("SELECT COUNT(*) FROM replies")->fetchColumn();
 $totalCategories = $pdo->query("SELECT COUNT(*) FROM categories")->fetchColumn();
 ?>
 
+
+<link rel="stylesheet" href="/css/style.css">
+
+
 <h1>Admin Panel</h1>
-<a href="../index.php">
-    <button type="button">← Kembali</button>
-</a>
+
 <div class="admin-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
     <div class="stat-card" style="background-color: #3498db; color: white; padding: 20px; border-radius: 8px; text-align: center;">
         <h3><?php echo $totalUsers; ?></h3>
@@ -42,5 +44,5 @@ $totalCategories = $pdo->query("SELECT COUNT(*) FROM categories")->fetchColumn()
     <a href="manage_replies.php" class="btn" style="text-align: center; padding: 20px;">Manage Komentar</a>
     <a href="manage_categories.php" class="btn" style="text-align: center; padding: 20px;">Manage Categories</a>
 </div>
+<a href="../index.php" class="btn" style="margin-top: 20px;">Kembali</a>
 
-<?php require_once '../includes/footer.php'; ?>

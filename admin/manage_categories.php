@@ -1,5 +1,6 @@
 <?php
-require_once '../includes/header.php';
+require_once __DIR__ . '/../config/database.php';
+
 
 if (!isAdmin()) {
     redirect('../index.php');
@@ -81,7 +82,7 @@ if (isset($_GET['edit'])) {
     $editCategory = $stmt->fetch();
 }
 ?>
-
+<link rel="stylesheet" href="/css/style.css">
 <h1>Manage Categories</h1>
 
 <?php if ($error): ?>
@@ -179,4 +180,3 @@ if (isset($_GET['edit'])) {
     <a href="index.php" class="btn">Kembali ke Admin Panel</a>
 </div>
 
-<?php require_once '../includes/footer.php'; ?>
