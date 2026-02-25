@@ -29,14 +29,18 @@ $stmt = $pdo->prepare("
         t.created_at DESC
     LIMIT :offset, :perPage
 ");
-$stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-$stmt->bindValue(':perPage', $perPage, PDO::PARAM_INT);
+$stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+$stmt->bindParam(':perPage', $perPage, PDO::PARAM_INT);
 $stmt->execute();
 $topics = $stmt->fetchAll();
 
 // Hitung total topik untuk pagination
 $totalTopics = $pdo->query("SELECT COUNT(*) FROM topics")->fetchColumn();
 $totalPages = ceil($totalTopics / $perPage);
+
+// Ambil statistik
+$totalUsers = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
+$totalReplies = $pdo->query("SELECT COUNT(*) FROM replies")->fetchColumn();
 ?>
 
 <h1>Selamat Datang di Forum Diskusi</h1>
@@ -45,20 +49,16 @@ $totalPages = ceil($totalTopics / $perPage);
 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px; border-radius: 8px; margin-bottom: 30px; text-align: center;">
     <h2 style="margin: 0 0 10px 0; font-size: 2.2em;">Forum Diskusi Komunitas</h2>
     <p style="margin: 0 0 20px 0; font-size: 1.2em; opacity: 0.9;">Tempat berbagi pengetahuan dan berdiskusi</p>
-    <div style="display: flex; gap: 15px; justify-content: center;">
-        <a href="search.php" class="btn" style="background-color: white; color: #667eea;">🔍 Cari Topik</a>
+    <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+        <a href="search.php" class="btn" style="background-color: white; color: #667eea; padding: 12px 25px;">🔍 Cari Topik</a>
         <?php if (isLoggedIn()): ?>
-            <a href="create_topic.php" class="btn" style="background-color: #ffd700; color: #333;">➕ Buat Topik Baru</a>
+            <a href="create_topic.php" class="btn" style="background-color: #ffd700; color: #333; padding: 12px 25px;">➕ Buat Topik Baru</a>
         <?php endif; ?>
     </div>
 </div>
 
 <!-- Statistik Cepat -->
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; margin-bottom: 30px;">
-    <?php
-    $totalUsers = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
-    $totalReplies = $pdo->query("SELECT COUNT(*) FROM replies")->fetchColumn();
-    ?>
     <div style="background-color: #fff; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
         <div style="font-size: 2em; color: #3498db;">📚</div>
         <div style="font-size: 1.5em; font-weight: bold;"><?php echo $totalTopics; ?></div>
@@ -135,7 +135,9 @@ $totalPages = ceil($totalTopics / $perPage);
         </div>
     <?php else: ?>
         <div style="background-color: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); overflow: hidden;">
-            <?php foreach ($topics as $index => $topic): ?>
+            <?php foreach ($topics as $index => $topic): 
+                $firstImage = extractFirstImage($topic['content']);
+            ?>
                 <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 15px; padding: 20px; border-bottom: 1px solid #eee; <?php echo $index % 2 == 0 ? 'background-color: #fff;' : 'background-color: #fafafa;'; ?>">
                     <!-- Avatar/Icon -->
                     <div style="width: 50px; height: 50px; background-color: #3498db; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 20px;">
@@ -144,21 +146,30 @@ $totalPages = ceil($totalTopics / $perPage);
                     
                     <!-- Konten Topik -->
                     <div style="flex: 1;">
-                        <div style="margin-bottom: 8px;">
-                            <?php if ($topic['status'] === 'closed'): ?>
-                                <span style="background-color: #dc3545; color: white; padding: 2px 8px; border-radius: 3px; font-size: 12px; margin-right: 5px;">🔒 Ditutup</span>
+                        <div style="display: flex; gap: 15px; margin-bottom: 8px;">
+                            <!-- Thumbnail Preview -->
+                            <?php if ($firstImage): ?>
+                                <div style="width: 80px; height: 60px; overflow: hidden; border-radius: 4px; flex-shrink: 0; border: 1px solid #ddd;">
+                                    <img src="<?php echo htmlspecialchars($firstImage); ?>" 
+                                         style="width: 100%; height: 100%; object-fit: cover;" 
+                                         loading="lazy"
+                                         onerror="this.style.display='none'; this.parentElement.style.display='none';">
+                                </div>
                             <?php endif; ?>
-                            <a href="topic.php?id=<?php echo $topic['id']; ?>" style="color: #2c3e50; text-decoration: none; font-weight: bold; font-size: 1.1em;">
-                                <?php echo htmlspecialchars($topic['title']); ?>
-                            </a>
+                            
+                            <div>
+                                <?php if ($topic['status'] === 'closed'): ?>
+                                    <span style="background-color: #dc3545; color: white; padding: 2px 8px; border-radius: 3px; font-size: 12px; margin-right: 5px;">🔒 Ditutup</span>
+                                <?php endif; ?>
+                                <a href="topic.php?id=<?php echo $topic['id']; ?>" style="color: #2c3e50; text-decoration: none; font-weight: bold; font-size: 1.1em;">
+                                    <?php echo htmlspecialchars($topic['title']); ?>
+                                </a>
+                            </div>
                         </div>
                         
                         <!-- Preview konten -->
                         <?php 
-                        $preview = strip_tags(parseContent($topic['content']));
-                        if (strlen($preview) > 150) {
-                            $preview = substr($preview, 0, 150) . '...';
-                        }
+                        $preview = getExcerpt($topic['content'], 150);
                         ?>
                         <p style="color: #666; font-size: 13px; margin-bottom: 8px;"><?php echo $preview; ?></p>
                         
@@ -192,9 +203,9 @@ $totalPages = ceil($totalTopics / $perPage);
         
         <!-- Pagination -->
         <?php if ($totalPages > 1): ?>
-            <div class="pagination" style="margin-top: 30px; display: flex; justify-content: center; gap: 5px;">
+            <div class="pagination" style="margin-top: 30px; display: flex; justify-content: center; gap: 5px; flex-wrap: wrap;">
                 <?php if ($page > 1): ?>
-                    <a href="?page=<?php echo $page-1; ?>" style="padding: 8px 12px; background-color: #fff; border: 1px solid #ddd; border-radius: 4px; color: #333; text-decoration: none;">&laquo;</a>
+                    <a href="?page=<?php echo $page-1; ?>" style="padding: 8px 12px; background-color: #fff; border: 1px solid #ddd; border-radius: 4px; color: #333; text-decoration: none;">&laquo; Sebelumnya</a>
                 <?php endif; ?>
                 
                 <?php
@@ -202,13 +213,14 @@ $totalPages = ceil($totalTopics / $perPage);
                 $endPage = min($totalPages, $startPage + 4);
                 for ($i = $startPage; $i <= $endPage; $i++): 
                 ?>
-                    <a href="?page=<?php echo $i; ?>" style="padding: 8px 12px; background-color: <?php echo $page == $i ? '#3498db' : '#fff'; ?>; border: 1px solid #ddd; border-radius: 4px; color: <?php echo $page == $i ? '#fff' : '#333'; ?>; text-decoration: none;">
+                    <a href="?page=<?php echo $i; ?>" 
+                       style="padding: 8px 12px; background-color: <?php echo $page == $i ? '#3498db' : '#fff'; ?>; border: 1px solid #ddd; border-radius: 4px; color: <?php echo $page == $i ? '#fff' : '#333'; ?>; text-decoration: none; font-weight: <?php echo $page == $i ? 'bold' : 'normal'; ?>;">
                         <?php echo $i; ?>
                     </a>
                 <?php endfor; ?>
                 
                 <?php if ($page < $totalPages): ?>
-                    <a href="?page=<?php echo $page+1; ?>" style="padding: 8px 12px; background-color: #fff; border: 1px solid #ddd; border-radius: 4px; color: #333; text-decoration: none;">&raquo;</a>
+                    <a href="?page=<?php echo $page+1; ?>" style="padding: 8px 12px; background-color: #fff; border: 1px solid #ddd; border-radius: 4px; color: #333; text-decoration: none;">Selanjutnya &raquo;</a>
                 <?php endif; ?>
             </div>
         <?php endif; ?>
@@ -219,6 +231,12 @@ $totalPages = ceil($totalTopics / $perPage);
 .category-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    border-color: #3498db !important;
+}
+
+.pagination a:hover {
+    background-color: #3498db !important;
+    color: white !important;
     border-color: #3498db !important;
 }
 
@@ -234,6 +252,11 @@ $totalPages = ceil($totalTopics / $perPage);
     
     div[style*="text-align: right"] {
         text-align: center !important;
+    }
+    
+    div[style*="display: flex; gap: 15px; margin-bottom: 8px;"] {
+        flex-direction: column;
+        align-items: center;
     }
 }
 </style>

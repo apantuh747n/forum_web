@@ -23,7 +23,7 @@ $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $perPage = 10;
 $offset = ($page - 1) * $perPage;
 
-// Ambil topik dalam kategori ini - PERBAIKAN: gunakan semua parameter named atau semua positional
+// Ambil topik dalam kategori ini
 $stmt = $pdo->prepare("
     SELECT t.*, u.username,
            (SELECT COUNT(*) FROM replies WHERE topic_id = t.id) as reply_count,
@@ -37,30 +37,11 @@ $stmt = $pdo->prepare("
     LIMIT :offset, :perPage
 ");
 
-// Bind parameter dengan metode named
 $stmt->bindParam(':category_id', $category_id, PDO::PARAM_INT);
 $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
 $stmt->bindParam(':perPage', $perPage, PDO::PARAM_INT);
 $stmt->execute();
 $topics = $stmt->fetchAll();
-
-// Atau alternatifnya dengan parameter positional semua:
-/*
-$stmt = $pdo->prepare("
-    SELECT t.*, u.username,
-           (SELECT COUNT(*) FROM replies WHERE topic_id = t.id) as reply_count,
-           (SELECT MAX(created_at) FROM replies WHERE topic_id = t.id) as last_reply
-    FROM topics t
-    JOIN users u ON t.user_id = u.id
-    WHERE t.category_id = ?
-    ORDER BY 
-        CASE WHEN t.status = 'open' THEN 0 ELSE 1 END,
-        t.created_at DESC
-    LIMIT ?, ?
-");
-$stmt->execute([$category_id, $offset, $perPage]);
-$topics = $stmt->fetchAll();
-*/
 
 // Hitung total topik di kategori ini
 $stmt = $pdo->prepare("SELECT COUNT(*) FROM topics WHERE category_id = ?");
@@ -173,26 +154,44 @@ $popularTopics = $stmt->fetchAll();
                     <div style="text-align: right;">Aktivitas</div>
                 </div>
 
-                <!-- Daftar Topik -->
-                <?php foreach ($topics as $index => $topic): ?>
+                <!-- Daftar Topik dengan Thumbnail -->
+                <?php foreach ($topics as $index => $topic): 
+                    $firstImage = extractFirstImage($topic['content']);
+                ?>
                     <div style="display: grid; grid-template-columns: 3fr 1fr 1fr 1fr; padding: 15px; border-bottom: 1px solid #eee; <?php echo $index % 2 == 0 ? 'background-color: #fff;' : 'background-color: #fafafa;'; ?>">
                         <div>
-                            <div style="margin-bottom: 5px;">
-                                <?php if ($topic['status'] === 'closed'): ?>
-                                    <span style="background-color: #dc3545; color: white; padding: 2px 8px; border-radius: 3px; font-size: 12px; margin-right: 5px;">🔒 Ditutup</span>
-                                <?php endif; ?>
-                                <a href="topic.php?id=<?php echo $topic['id']; ?>" style="color: #2c3e50; text-decoration: none; font-weight: bold; font-size: 1.1em;">
-                                    <?php echo htmlspecialchars($topic['title']); ?>
-                                </a>
-                            </div>
-                            <div style="font-size: 12px; color: #666;">
-                                Oleh: <a href="profile.php?id=<?php echo $topic['user_id']; ?>" style="color: #3498db; text-decoration: none;"><?php echo htmlspecialchars($topic['username']); ?></a>
-                                | <?php echo date('d M Y H:i', strtotime($topic['created_at'])); ?>
+                            <!-- Preview Thumbnail -->
+                            <?php if ($firstImage): ?>
+                                <div style="float: left; margin-right: 15px; width: 60px; height: 60px; overflow: hidden; border-radius: 4px; border: 1px solid #ddd;">
+                                    <img src="<?php echo htmlspecialchars($firstImage); ?>" 
+                                         style="width: 100%; height: 100%; object-fit: cover;" 
+                                         loading="lazy"
+                                         onerror="this.style.display='none'; this.parentElement.style.display='none';">
+                                </div>
+                            <?php endif; ?>
+                            
+                            <div style="<?php echo $firstImage ? 'margin-left: 75px;' : ''; ?>">
+                                <div style="margin-bottom: 5px;">
+                                    <?php if ($topic['status'] === 'closed'): ?>
+                                        <span style="background-color: #dc3545; color: white; padding: 2px 8px; border-radius: 3px; font-size: 12px; margin-right: 5px;">🔒 Ditutup</span>
+                                    <?php endif; ?>
+                                    <a href="topic.php?id=<?php echo $topic['id']; ?>" style="color: #2c3e50; text-decoration: none; font-weight: bold; font-size: 1.1em;">
+                                        <?php echo htmlspecialchars($topic['title']); ?>
+                                    </a>
+                                </div>
+                                <div style="font-size: 12px; color: #666;">
+                                    Oleh: <a href="profile.php?id=<?php echo $topic['user_id']; ?>" style="color: #3498db; text-decoration: none;"><?php echo htmlspecialchars($topic['username']); ?></a>
+                                    | <?php echo date('d M Y H:i', strtotime($topic['created_at'])); ?>
+                                </div>
+                                <!-- Preview konten singkat -->
+                                <div style="font-size: 12px; color: #999; margin-top: 5px;">
+                                    <?php echo getExcerpt($topic['content'], 100); ?>
+                                </div>
                             </div>
                         </div>
                         <div style="text-align: center; align-self: center;">
                             <span style="background-color: #e9ecef; padding: 3px 10px; border-radius: 15px; font-size: 14px;">
-                                <?php echo $topic['reply_count']; ?>
+                                💬 <?php echo $topic['reply_count']; ?>
                             </span>
                         </div>
                         <div style="text-align: center; align-self: center; color: #666;">
@@ -344,6 +343,11 @@ $popularTopics = $stmt->fetchAll();
     background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 50%);
     opacity: 0.3;
     pointer-events: none;
+}
+
+.thumbnail-container {
+    border: 1px solid #ddd;
+    background-color: #f8f9fa;
 }
 
 @media (max-width: 768px) {

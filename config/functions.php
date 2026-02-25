@@ -80,40 +80,83 @@ function parseContent($text) {
     // Parse YouTube
     $text = parseYouTubeLinks($text);
     
-    // Parse link biasa jadi klikable (tapi jangan parse yang sudah jadi HTML)
+    // Parse link biasa jadi klikable
     $linkPattern = '/(?<!href="|src=")https?:\/\/[^\s<]+/i';
     $text = preg_replace_callback($linkPattern, function($matches) {
         $url = $matches[0];
-        // Cek apakah ini gambar atau video
+        // Cek apakah ini gambar
         if (preg_match('/\.(jpg|jpeg|png|gif|webp)$/i', $url)) {
-            return $url; // Biarkan, nanti diproses parseImageLinks
+            return $url;
         }
         return '<a href="' . $url . '" target="_blank" rel="noopener noreferrer" class="forum-link">' . $url . '</a>';
     }, $text);
     
-    // Konversi newline ke <br> di akhir
+    // Konversi newline ke <br>
     $text = nl2br($text);
     
     return $text;
 }
 
 /**
- * Buat thumbnail dari link gambar
- */
-function getImageThumbnail($url, $width = 100, $height = 100) {
-    return '<img src="' . htmlspecialchars($url) . '" ' .
-           'style="width: ' . $width . 'px; height: ' . $height . 'px; object-fit: cover; border-radius: 4px;" ' .
-           'loading="lazy" onerror="this.style.display=\'none\'">';
-}
-
-/**
- * Ekstrak gambar pertama dari konten untuk preview
+ * Ekstrak gambar pertama dari konten untuk preview thumbnail
  */
 function extractFirstImage($content) {
+    if (empty($content)) return null;
+    
+    // Cari tag img
     $pattern = '/<img[^>]+src="([^">]+)"/';
     if (preg_match($pattern, $content, $matches)) {
         return $matches[1];
     }
+    
+    // Cari markdown image ![]()
+    $markdownPattern = '/!\[.*?\]\((https?:\/\/[^\s)]+)\)/';
+    if (preg_match($markdownPattern, $content, $matches)) {
+        return $matches[1];
+    }
+    
+    // Cari BBCode [img]
+    $bbcodePattern = '/\[img\](https?:\/\/[^\[]+)\[\/img\]/';
+    if (preg_match($bbcodePattern, $content, $matches)) {
+        return $matches[1];
+    }
+    
+    // Cari BBCode dengan alt [img=alt]url[/img]
+    $bbcodeAltPattern = '/\[img=.*?\](https?:\/\/[^\[]+)\[\/img\]/';
+    if (preg_match($bbcodeAltPattern, $content, $matches)) {
+        return $matches[1];
+    }
+    
+    // Cari link gambar langsung
+    $imagePattern = '/\b(https?:\/\/\S+\.(?:jpg|jpeg|gif|png|webp|bmp|svg))\b/i';
+    if (preg_match($imagePattern, $content, $matches)) {
+        return $matches[1];
+    }
+    
     return null;
+}
+
+/**
+ * Buat thumbnail HTML dari URL gambar
+ */
+function getImageThumbnail($url, $width = 80, $height = 60, $class = '') {
+    if (!$url) return '';
+    
+    return '<div class="thumbnail-container" style="width: ' . $width . 'px; height: ' . $height . 'px; overflow: hidden; border-radius: 4px; ' . $class . '">' .
+           '<img src="' . htmlspecialchars($url) . '" ' .
+           'style="width: 100%; height: 100%; object-fit: cover;" ' .
+           'loading="lazy" onerror="this.style.display=\'none\'; this.parentElement.style.display=\'none\';">' .
+           '</div>';
+}
+
+/**
+ * Mendapatkan excerpt dari konten
+ */
+function getExcerpt($content, $length = 150) {
+    $content = strip_tags($content);
+    if (strlen($content) > $length) {
+        $content = substr($content, 0, $length) . '...';
+    }
+    return $content;
 }
 ?>
